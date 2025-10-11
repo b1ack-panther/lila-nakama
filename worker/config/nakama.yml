@@ -1,0 +1,21 @@
+name: "${NAKAMA_NAME:-lila-tictactoe}"
+data_dir: "/nakama/data"
+
+database:
+  address: "${database.address:-postgres:5432}"
+  user: "${database.user:-postgres}"
+  password: "${database.password:-postgres}"
+  name: "${database.name:-nakama}"
+  sslmode: "disable"
+
+runtime:
+  path: "/nakama/data/modules"
+
+socket:
+  server_key: "${socket.server_key:-defaultkey}"
+  port: 7350
+  max_message_size_bytes: 4096
+  read_timeout_ms: 10000
+
+logger:
+  level: "${logger.level:-info}"

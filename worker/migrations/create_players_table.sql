@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS players (
+  id UUID PRIMARY KEY,
+  device_id TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
