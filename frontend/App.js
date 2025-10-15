@@ -4,6 +4,8 @@ import { NakamaService } from "./services/nakama";
 import LobbyScreen from "./screens/LobbyScreen";
 import GameScreen from "./screens/GameScreen";
 import LeaderboardScreen from "./screens/LeaderboardScreen";
+import { StyleSheet } from "react-native";
+import "nativewind";
 
 /*
 Simple navigation: render selected screen statefully.
@@ -24,9 +26,9 @@ export default function App() {
   }, []);
 
   return (
-    <SafeAreaView style={{flex:1}}>
+    <SafeAreaView className="flex-1">
       {screen === "lobby" && <LobbyScreen onPlay={(m)=>{ setMatchId(m); setScreen("game"); }} onLeaderboard={()=>setScreen("leaderboard")} />}
-      {screen === "game" && <GameScreen matchId={matchId} onExit={()=>setScreen("lobby")} />}
+      {screen === "game" && <GameScreen socket={socket} matchId={matchId} onExit={()=>setScreen("lobby")} />}
       {screen === "leaderboard" && <LeaderboardScreen onBack={()=>setScreen("lobby")} />}
     </SafeAreaView>
   );

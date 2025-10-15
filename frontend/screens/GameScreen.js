@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Button, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import { NakamaService } from "../services/nakama";
 
 /*
@@ -24,20 +24,27 @@ export default function GameScreen({ matchId, onExit }) {
   const renderCell = (r,c) => {
     const val = state?.board?.[r]?.[c] || "";
     return (
-      <TouchableOpacity key={`${r}-${c}`} onPress={()=>makeMove(r,c)} style={{width:80,height:80,justifyContent:"center",alignItems:"center",borderWidth:1}}>
-        <Text style={{fontSize:32}}>{val}</Text>
+      <TouchableOpacity 
+        key={`${r}-${c}`} 
+        onPress={()=>makeMove(r,c)} 
+        className="w-20 h-20 justify-center items-center border border-gray-400">
+        <Text className="text-3xl">{val}</Text>
       </TouchableOpacity>
     );
   };
 
   return (
-    <View style={{flex:1,alignItems:"center",paddingTop:40}}>
-      <Text style={{fontSize:18,marginBottom:12}}>Match: {matchId}</Text>
-      <View style={{width:260,height:260,flexDirection:"row",flexWrap:"wrap"}}>
+    <View className="flex-1 items-center pt-10 bg-white">
+      <Text className="text-lg mb-3">Match: {matchId}</Text>
+      <View className="w-[260px] h-[260px] flex-row flex-wrap">
         {[0,1,2].map(r => [0,1,2].map(c => renderCell(r,c)))}
       </View>
-      <View style={{height:20}} />
-      <Button title="Exit to Lobby" onPress={onExit} />
+      <View className="h-5" />
+      <TouchableOpacity 
+        className="bg-red-500 py-3 px-6 rounded-lg" 
+        onPress={onExit}>
+        <Text className="text-white font-semibold">Exit to Lobby</Text>
+      </TouchableOpacity>
     </View>
   );
 }

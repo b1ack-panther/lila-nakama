@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Button } from "react-native";
+import { View, Text, Button, TouchableOpacity } from "react-native";
 import { NakamaService } from "../services/nakama";
 
 /*
@@ -11,11 +11,18 @@ export default function LobbyScreen({ onPlay, onLeaderboard }) {
     onPlay(matchId);
   };
   return (
-    <View style={{flex:1,justifyContent:"center",alignItems:"center"}}>
-      <Text style={{fontSize:24,fontWeight:"bold",marginBottom:16}}>Lila Tic-Tac-Toe</Text>
-      <Button title="Find Match" onPress={findMatch} />
-      <View style={{height:16}} />
-      <Button title="Leaderboard" onPress={onLeaderboard} />
+    <View className="flex-1 justify-center items-center bg-white">
+      <Text className="text-2xl font-bold mb-4">Lila Tic-Tac-Toe</Text>
+      <TouchableOpacity 
+        className="bg-blue-500 py-3 px-6 rounded-lg mb-4" 
+        onPress={findMatch}>
+        <Text className="text-white font-semibold">Find Match</Text>
+      </TouchableOpacity>
+      <TouchableOpacity 
+        className="bg-gray-500 py-3 px-6 rounded-lg" 
+        onPress={onLeaderboard}>
+        <Text className="text-white font-semibold">Leaderboard</Text>
+      </TouchableOpacity>
     </View>
   );
 }

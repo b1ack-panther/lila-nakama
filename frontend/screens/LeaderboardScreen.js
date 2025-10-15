@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, Button } from "react-native";
+import { View, Text, FlatList, TouchableOpacity } from "react-native";
 import { NakamaService } from "../services/nakama";
 
 /*
@@ -12,15 +12,23 @@ export default function LeaderboardScreen({ onBack }) {
   }, []);
 
   return (
-    <View style={{flex:1,padding:16}}>
-      <Text style={{fontSize:20,fontWeight:"bold",marginBottom:12}}>Leaderboard</Text>
-      <FlatList data={rows} keyExtractor={(i)=>i.username} renderItem={({item})=>(
-        <View style={{padding:8,flexDirection:"row",justifyContent:"space-between"}}>
-          <Text>{item.username}</Text>
-          <Text>{item.score} pts</Text>
-        </View>
-      )} />
-      <Button title="Back" onPress={onBack} />
+    <View className="flex-1 p-4 bg-white">
+      <Text className="text-xl font-bold mb-3">Leaderboard</Text>
+      <FlatList 
+        data={rows} 
+        keyExtractor={(i)=>i.username} 
+        renderItem={({item})=>(
+          <View className="p-2 flex-row justify-between border-b border-gray-200">
+            <Text className="text-gray-800">{item.username}</Text>
+            <Text className="font-semibold">{item.score} pts</Text>
+          </View>
+        )} 
+      />
+      <TouchableOpacity 
+        className="bg-gray-500 py-3 px-6 rounded-lg mt-4 self-center" 
+        onPress={onBack}>
+        <Text className="text-white font-semibold">Back</Text>
+      </TouchableOpacity>
     </View>
   );
 }
