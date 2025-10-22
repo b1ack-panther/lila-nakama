@@ -63,7 +63,7 @@ func rpcFindMatch(marshaler *protojson.MarshalOptions, unmarshaler *protojson.Un
 		maxSize := 1
 		var fast int
 		if request.Fast {
-			fast = 1
+			fast = 0
 		}
 		query := fmt.Sprintf("+label.open:1 +label.fast:%d", fast)
 

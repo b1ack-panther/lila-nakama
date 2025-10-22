@@ -35,9 +35,9 @@ const (
 
 	maxEmptySec = 30
 
-	delayBetweenGamesSec = 5
-	turnTimeFastSec      = 10
-	turnTimeNormalSec    = 20
+	delayBetweenGamesSec = 10
+	turnTimeFastSec      = 16
+	turnTimeNormalSec    = 10
 )
 
 var winningPositions = [][]int32{
@@ -227,7 +227,6 @@ func (m *MatchHandler) MatchJoin(ctx context.Context, logger runtime.Logger, db 
 
 func (m *MatchHandler) MatchLeave(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, dispatcher runtime.MatchDispatcher, tick int64, state interface{}, presences []runtime.Presence) interface{} {
 	s := state.(*MatchState)
-
 	for _, presence := range presences {
 		s.presences[presence.GetUserId()] = nil
 	}
@@ -244,6 +243,8 @@ func (m *MatchHandler) MatchLeave(ctx context.Context, logger runtime.Logger, db
 		_ = dispatcher.BroadcastMessage(
 			int64(api.OpCode_OPCODE_OPPONENT_LEFT), nil,
 			humanPlayersRemaining, nil, true)
+		s.playing = false
+		s.winner = s.marks[humanPlayersRemaining[0].GetUserId()]
 	} else if s.ai && len(humanPlayersRemaining) == 0 {
 		delete(s.presences, aiUserId)
 		s.ai = false
@@ -381,35 +382,76 @@ func (m *MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db 
 			}
 			s.deadlineRemainingTicks = calculateDeadlineTicks(s.label)
 
-			// Check if game is over through a winning move.
 		winCheck:
 			for _, winningPosition := range winningPositions {
-				for _, position := range winningPosition {
-					if s.board[position] != mark {
-						continue winCheck
+				allMatch := true
+				for _, pos := range winningPosition {
+					if s.board[pos] != mark {
+						allMatch = false
+						break
 					}
 				}
+				if allMatch {
+					// Found winner
+					s.winner = mark
+					s.winnerPositions = winningPosition
+					s.playing = false
+					s.deadlineRemainingTicks = 0
+					s.nextGameRemainingTicks = delayBetweenGamesSec * tickRate
 
-				// Update state to reflect the winner, and schedule the next game.
-				s.winner = mark
-				s.winnerPositions = winningPosition
-				s.playing = false
-				s.deadlineRemainingTicks = 0
-				s.nextGameRemainingTicks = delayBetweenGamesSec * tickRate
-			}
-			// Check if game is over because no more moves are possible.
-			tie := true
-			for _, mark := range s.board {
-				if mark == api.Mark_MARK_UNSPECIFIED {
-					tie = false
-					break
+					var winnerUserID, loserUserID string
+
+					for userID, mark := range s.marks {
+						if mark == s.winner {
+							winnerUserID = userID
+						} else {
+							loserUserID = userID
+						}
+					}
+
+					if winnerUserID != "" {
+						// Update storage for winner (+1 win)
+						_, err := updatePlayerStats(ctx, nk, logger, winnerUserID, 1, 0, 1)
+						if err != nil {
+							logger.Error("failed updating winner stats: %v", err)
+						}
+
+						// Update storage for loser (+1 loss)
+						if loserUserID != "" {
+							_, err := updatePlayerStats(ctx, nk, logger, loserUserID, 0, 1, 1)
+							if err != nil {
+								logger.Error("failed updating loser stats: %v", err)
+							}
+						}
+					}
+
+					break winCheck
 				}
 			}
-			if tie {
-				// Update state to reflect the tie, and schedule the next game.
-				s.playing = false
-				s.deadlineRemainingTicks = 0
-				s.nextGameRemainingTicks = delayBetweenGamesSec * tickRate
+
+			// --- Check for a tie ---
+			if s.winner == api.Mark_MARK_UNSPECIFIED {
+				isTie := true
+				for _, m := range s.board {
+					if m == api.Mark_MARK_UNSPECIFIED {
+						isTie = false
+						break
+					}
+				}
+				if isTie {
+					s.playing = false
+					s.deadlineRemainingTicks = 0
+					s.nextGameRemainingTicks = delayBetweenGamesSec * tickRate
+
+					// Update stats for both players on tie
+					for userID := range s.marks {
+						_, err := updatePlayerStats(ctx, nk, logger, userID, 0, 0, 1)
+						if err != nil {
+							logger.Error("failed updating tie stats for user %s: %v", userID, err)
+							continue
+						}
+					}
+				}
 			}
 
 			var opCode api.OpCode
@@ -428,6 +470,33 @@ func (m *MatchHandler) MatchLoop(ctx context.Context, logger runtime.Logger, db 
 					Winner:          s.winner,
 					WinnerPositions: s.winnerPositions,
 					NextGameStart:   t.Add(time.Duration(s.nextGameRemainingTicks/tickRate) * time.Second).Unix(),
+				}
+
+				var winnerUserID, loserUserID string
+
+				// Identify winner and loser
+				for userID, mark := range s.marks {
+					if mark == s.winner {
+						winnerUserID = userID
+					} else {
+						loserUserID = userID
+					}
+				}
+
+				if winnerUserID != "" {
+					// Update storage for winner (+1 win, +1 total)
+					_, err := updatePlayerStats(ctx, nk, logger, winnerUserID, 1, 0, 1)
+					if err != nil {
+						logger.Error("failed updating winner stats: %v", err)
+					}
+
+					// Update storage for loser (+1 loss, +1 total)
+					if loserUserID != "" {
+						_, err := updatePlayerStats(ctx, nk, logger, loserUserID, 0, 1, 1)
+						if err != nil {
+							logger.Error("failed updating loser stats: %v", err)
+						}
+					}
 				}
 			}
 

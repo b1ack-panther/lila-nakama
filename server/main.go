@@ -17,9 +17,10 @@ package main
 import (
 	"context"
 	"database/sql"
+	"time"
+
 	"github.com/heroiclabs/nakama-common/runtime"
 	"google.golang.org/protobuf/encoding/protojson"
-	"time"
 )
 
 var (
@@ -30,8 +31,8 @@ var (
 	errUnmarshal      = runtime.NewError("cannot unmarshal type", 13) // INTERNAL
 )
 
+
 const (
-	rpcIdRewards   = "rewards"
 	rpcIdFindMatch = "find_match"
 )
 
@@ -46,7 +47,7 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		DiscardUnknown: false,
 	}
 
-	if err := initializer.RegisterRpc(rpcIdRewards, rpcRewards); err != nil {
+	if err := InitLeaderboard(ctx, nk, logger); err != nil {
 		return err
 	}
 

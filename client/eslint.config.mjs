@@ -5,6 +5,14 @@ import { defineConfig } from "eslint/config";
 
 export default defineConfig([
 	{
+		files: ["tailwind.config.js"],
+		languageOptions: {
+			globals: {
+				...globals.node,
+			},
+		},
+	},
+	{
 		ignores: ["node_modules", "dist", "build", ".expo", "android", "ios"],
 	},
 	{
