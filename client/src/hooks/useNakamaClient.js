@@ -55,14 +55,14 @@ export function useNakamaClient() {
 				await AsyncStorage.setItem("deviceId", deviceId);
 			}
 
-			const newSession = await client.authenticateDevice(
-				deviceId,
-				true,
-				username
-			);
+			let newSession = await client.authenticateDevice(deviceId, true);
+
 			await client.updateAccount(newSession, {
 				username,
 			});
+
+			if (username !== newSession.username)
+				newSession = await client.authenticateDevice(deviceId, true);
 
 			setSession(newSession);
 			await AsyncStorage.setItem("userId", newSession.user_id);

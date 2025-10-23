@@ -23,9 +23,7 @@ export default function SignInScreen({ onAuthenticated, loading }) {
 			await onAuthenticated(username.trim());
 			setError("");
 		} catch (error) {
-			if (error?.status === 409) {
-				setError("This username has already been used.");
-			}
+			setError("This username has already been used.");
 			console.log(error);
 		}
 	};

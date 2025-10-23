@@ -21,8 +21,7 @@ export default function App() {
 	} = useNakamaClient();
 
 	const [screen, setScreen] = useState("signin");
-	console.log(session)
-	useEffect(() => {
+ 	useEffect(() => {
 		if (session) setScreen("lobby");
 	}, [session]);
 
