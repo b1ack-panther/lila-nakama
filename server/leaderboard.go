@@ -20,39 +20,47 @@ func InitLeaderboard(ctx context.Context, nk runtime.NakamaModule, logger runtim
 	return nil
 }
 
-
 func updatePlayerStats(ctx context.Context, nk runtime.NakamaModule, logger runtime.Logger, userID string, wins, losses, ties int) (map[string]interface{}, error) {
-	// Calculate leaderboard delta: win +10, loss -5, tie +0
-	scoreDelta := int64(wins*10 - losses*5)
-
-	// Prepare leaderboard metadata (optional)
 	metadata := map[string]interface{}{
 		"reason": "match_result",
 	}
 
-	// Nakama operator constants:
-	// 0 = set, 1 = best, 2 = increment
 	account, err := nk.AccountGetId(ctx, userID)
 	if err != nil {
 		logger.Error("Error fetching username for %s: %v", userID, err)
 	}
 	username := account.GetUser().GetUsername()
-	if scoreDelta != 0 {
-		_, err := nk.LeaderboardRecordWrite(ctx,
-			"tictactoe_global",
-			userID,
-			username,
-			scoreDelta,
-			0,
-			metadata,
-			nil,
-		)
-		if err != nil {
-			logger.Error("failed updating leaderboard for user %s: %v", userID, err)
-		}
+
+	var operator, deltaScore int
+
+	if losses > 0 {
+		operator = 4
+		deltaScore = 5
+	} else if wins > 0{
+		operator = 3
+		deltaScore = 10
+	} else {
+		operator = 3
+		deltaScore = 0
 	}
 
-	// Return storage stats (if you’re saving these somewhere else)
+	logger.Info("Updating leaderboard for %s (delta=%d) ----", username, operator, deltaScore)
+
+	_, err = nk.LeaderboardRecordWrite(
+		ctx,
+		"tictactoe_global",
+		userID,
+		username,
+		int64(deltaScore),
+		0,
+		metadata,
+		&operator,
+	)
+	if err != nil {
+		logger.Error("Failed updating leaderboard for user %s: %v ----", userID, err)
+		return nil, err
+	}
+
 	stats := map[string]interface{}{
 		"wins":   wins,
 		"losses": losses,
@@ -61,7 +69,6 @@ func updatePlayerStats(ctx context.Context, nk runtime.NakamaModule, logger runt
 
 	return stats, nil
 }
-
 
 // // Fetch player stats or initialize them if not found
 // func getPlayerStats(ctx context.Context, nk runtime.NakamaModule, userID string) (map[string]int, error, any) {

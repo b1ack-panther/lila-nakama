@@ -1,9 +1,24 @@
-console:
-  max_message_size_bytes: 409600
+# console:
+#   max_message_size_bytes: 409600
+# logger:
+#   level: "DEBUG"
+# session:
+#   token_expiry_sec: 7200 # 2 hours
+# socket:
+#   max_message_size_bytes: 4096 # reserved buffer
+#   max_request_size_bytes: 131072
+
+
+name: "my-nakama"
 logger:
-  level: "DEBUG"
-session:
-  token_expiry_sec: 7200 # 2 hours
+  level: "debug"
+runtime:
+  path: "./data/modules"
+
+database:
+  address: "postgresql://neondb_owner:npg_zj5UeVQO1NkJ@ep-orange-wildflower-a1i0meyt-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
 socket:
-  max_message_size_bytes: 4096 # reserved buffer
-  max_request_size_bytes: 131072
+  server_key: "defaultkey"
+  port: ${PORT:7350}
+
