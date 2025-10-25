@@ -1,31 +1,43 @@
 {
-  "expo": {
-    "name": "client",
-    "slug": "client",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "package": "com.b1ackpan1her.client"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
-    }
-  }
+	"expo": {
+		"name": "XOXO",
+		"slug": "client",
+		"version": "1.0.0",
+		"orientation": "portrait",
+		"icon": "./assets/icon.png",
+		"userInterfaceStyle": "light",
+		"newArchEnabled": true,
+		"splash": {
+			"image": "./assets/splash-icon.png",
+			"resizeMode": "contain",
+			"backgroundColor": "#ffffff"
+		},
+		"ios": {
+			"supportsTablet": true
+		},
+		"android": {
+			"adaptiveIcon": {
+				"foregroundImage": "./assets/adaptive-icon.png",
+				"backgroundColor": "#ffffff"
+			},
+			"edgeToEdgeEnabled": true,
+			"package": "com.b1ckpan1her.client",
+			"versionCode": 1,
+			"permissions": [
+				"android.permission.ACCESS_FINE_LOCATION",
+				"android.permission.INTERNET"
+			],
+			"useCleartextTraffic": true,
+			"networkSecurityConfig": "@xml/network_security_config"
+		},
+		"web": {
+			"favicon": "./assets/favicon.png",
+			"bundler": "metro"
+		},
+		"extra": {
+			"eas": {
+				"projectId": "01cbe222-0381-4d0d-abdd-3818970ef6e4"
+			}
+		}
+	}
 }

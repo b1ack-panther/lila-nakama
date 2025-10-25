@@ -8,6 +8,7 @@ import {
 	Alert,
 	Animated,
 	Platform,
+	StyleSheet,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 
@@ -19,18 +20,14 @@ export default function GameScreen({
 	session,
 }) {
 	const { user_id: localUserId, username } = session;
-	// board uses null for empty cells (consistent with new UI)
 	const [board, setBoard] = useState(Array(9).fill(null));
 	const [status, setStatus] = useState("Joining match...");
 	const [loading, setLoading] = useState(true);
-	const [localMark, setLocalMark] = useState(null); // "X" | "O" | null
-	const [turnMark, setTurnMark] = useState(null); // "X" | "O" | null
-	const [winner, setWinner] = useState(null); // "X" | "O" | null
+	const [localMark, setLocalMark] = useState(null);
+	const [turnMark, setTurnMark] = useState(null);
+	const [winner, setWinner] = useState(null);
 	const [nextGameAt, setNextGameAt] = useState(null);
-
 	const [countdown, setCountdown] = useState(null);
-
-	// Prevent double clicks until server confirms / turn changes
 	const [movePending, setMovePending] = useState(false);
 
 	// Animation values
@@ -70,8 +67,6 @@ export default function GameScreen({
 		}
 	}, [winner]);
 
-	// Countdown
-
 	useEffect(() => {
 		if (countdown == null || countdown <= 0) {
 			return;
@@ -90,7 +85,6 @@ export default function GameScreen({
 		return () => clearInterval(intervalId);
 	}, [countdown]);
 
-	// leave match on unmount
 	useEffect(() => {
 		const handleLeaveMatch = async () => {
 			try {
@@ -102,7 +96,6 @@ export default function GameScreen({
 		return () => handleLeaveMatch();
 	}, [matchId, socket]);
 
-	// helper: map numeric/raw marks to "X"/"O"/null
 	function normalizeMark(raw) {
 		if (raw === 1 || raw === "1") return "X";
 		if (raw === 2 || raw === "2") return "O";
@@ -110,11 +103,8 @@ export default function GameScreen({
 		return null;
 	}
 
-	// sets status based on the current turn and localMark
 	function setStatusFromTurn(turn, lm = localMark) {
-		// turn: "X" | "O" | null
 		if (!turn) {
-			// if game ended, status will be set elsewhere
 			setStatus("Waiting...");
 			return;
 		}
@@ -125,7 +115,7 @@ export default function GameScreen({
 			setStatus(`${turn}'s turn`);
 		}
 	}
-	// socket handling
+
 	useEffect(() => {
 		if (!matchId || !socket) {
 			setStatus("No match/socket");
@@ -149,7 +139,6 @@ export default function GameScreen({
 					const txt = new TextDecoder().decode(rawData);
 					return JSON.parse(txt);
 				}
-				// if server already gives object
 				if (typeof rawData === "object") return rawData;
 			} catch (err) {
 				console.warn("parseMatchPayload error:", err);
@@ -161,18 +150,15 @@ export default function GameScreen({
 			const payload = parseMatchPayload(matchData.data);
 			if (!payload) return;
 
-			// If server gives per-user marks mapping, set localMark first
 			if (payload.marks && localUserId) {
 				const raw =
 					payload.marks[localUserId] ?? payload.marks[localUserId.toString()];
 				const normalized = normalizeMark(raw);
 				if (normalized) {
-					// ensure localMark is set before computing status
 					setLocalMark(normalized);
 				}
 			}
 
-			// board updates
 			if (payload.board) {
 				const normalizedBoard = payload.board.map((cell) =>
 					normalizeMark(cell)
@@ -180,16 +166,12 @@ export default function GameScreen({
 				setBoard(normalizedBoard);
 			}
 
-			// winner
 			const w = normalizeMark(payload.winner);
 			setWinner(w);
 
-			// turnMark comes from payload.mark (server indicates whose turn it is)
 			const tm = normalizeMark(payload.mark);
 			setTurnMark(tm);
 
-			// status computation — use the fresh localMark value if provided in payload
-			// If we just set localMark above, we want to compute status with that value.
 			const maybeLocal =
 				payload.marks && localUserId
 					? (normalizeMark(
@@ -199,22 +181,21 @@ export default function GameScreen({
 					: localMark;
 			setStatusFromTurn(tm, maybeLocal);
 
-			// next game time / deadline support
-
 			if (payload.nextGameStart) {
 				const date = new Date(payload.nextGameStart * 1000);
 				setNextGameAt(date);
 				setCountdown(
-					Math.floor(Math.max(0, date.getTime() - Date.now()) / 1000)
+					// Math.floor(Math.max(0, date.getTime() - Date.now() - 24000) / 1000)
+					10
 				);
 			} else if (payload?.deadline) {
-				const tictime = Math.floor(
-					(new Date(payload.deadline * 1000).getTime() - Date.now()) / 1000
-				);
-				setCountdown(tictime);
+				setNextGameAt(null);
+				// const tictime = Math.floor(
+				// 	(new Date(payload.deadline * 1000).getTime() - Date.now()) / 1000
+				// );
+				setCountdown(10);
 			}
 
-			// If game ended and no winner but board full => draw / tie
 			if (!w) {
 				const isFull = payload.board
 					? payload.board.every((c) => normalizeMark(c) !== null)
@@ -224,8 +205,6 @@ export default function GameScreen({
 				}
 			}
 
-			// If we receive an authoritative state after a move, clear movePending
-			// (server accepted or rejected the optimistic move)
 			setMovePending(false);
 			setLoading(false);
 		}
@@ -267,9 +246,7 @@ export default function GameScreen({
 		};
 	}, [matchId, socket, localUserId]);
 
-	// click handler with optimistic move and movePending lock
 	async function handleCellPress(i) {
-		// disables clicking if: winner exists, loading, movePending (we already clicked), cell occupied, not player's turn
 		if (winner) return;
 		if (!socket) {
 			Alert.alert("No nakama socket");
@@ -279,13 +256,11 @@ export default function GameScreen({
 		if (movePending) return;
 		if (board[i] !== null) return;
 
-		// must be your turn according to server-provided turnMark
 		if (localMark && turnMark && localMark !== turnMark) {
 			Alert.alert("Not your turn", "Wait for opponent to play");
 			return;
 		}
 
-		// optimistic update
 		const optimistic = board.slice();
 		optimistic[i] = localMark || "X";
 		setBoard(optimistic);
@@ -293,13 +268,10 @@ export default function GameScreen({
 		setMovePending(true);
 
 		try {
-			await onMove(i); // caller should send match RPC / message to server
-			// don't clear movePending here; wait for authoritative matchdata from server to clear it
-			// but as a safety, if server call returns quickly we can clear
+			await onMove(i);
 		} catch (err) {
 			console.error("onMove error:", err);
 			Alert.alert("Move failed", err.message || String(err));
-			// revert optimistic
 			setBoard((prev) => {
 				const copy = prev.slice();
 				if (copy[i] === (localMark || "X")) copy[i] = null;
@@ -309,74 +281,73 @@ export default function GameScreen({
 		}
 	}
 
-	// derived flags
 	const isBoardFull = board.every((c) => c !== null);
 	const isYourTurn =
 		localMark && turnMark && localMark === turnMark && !movePending;
 
-	// UI while joining
 	if (loading) {
 		return (
-			<View className="flex-1 justify-center items-center bg-white">
+			<View style={styles.loadingContainer}>
 				<ActivityIndicator size="large" color="#06b6d4" />
-				<Text className="mt-3 text-white">Joining match...</Text>
+				<Text style={styles.loadingText}>Joining match...</Text>
 			</View>
 		);
 	}
 
 	return (
-		<View className="flex-1 items-center justify-center bg-color-background dark:bg-color-background-dark p-4 relative w-full">
-			<View className="absolute inset-0 rounded-lg" />
+		<View style={styles.container}>
 			{/* Header */}
-			<View className="mb-8 w-full">
-				<View className="flex-row justify-between gap-2 w-full items-end">
-					<View className="flex flex-row items-center gap-2">
-						<View className="w-12 h-12 rounded-full bg-neon-blue/20 items-center justify-center">
+			<View style={styles.header}>
+				<View style={styles.headerRow}>
+					<View style={styles.headerLeft}>
+						<View style={styles.iconContainer}>
 							<MaterialIcons name="games" size={30} color="#00F0FF" />
 						</View>
-						<Text className="text-3xl font-extrabold text-white tracking-widest">
-							Tic Tac Toe
-						</Text>
+						<Text style={styles.title}>Tic Tac Toe</Text>
 					</View>
-					<View>
-						<Text className="text-white">Username</Text>
-						<Text className="text-color-primary">#{username}</Text>
+					<View style={styles.userInfo}>
+						<Text style={styles.usernameLabel}>Username</Text>
+						<Text style={styles.username}>#{username}</Text>
 					</View>
 				</View>
 			</View>
 
 			{/* Game Board */}
 			<Animated.View
-				style={{ transform: [{ scale: boardScale }], opacity: boardOpacity }}
-				className="bg-color-surface/10 rounded-3xl p-4 mb-8 border-4 border-neon-blue dark:border-neon-purple shadow-xl shadow-neon-blue/30 dark:shadow-neon-purple/30"
+				style={[
+					styles.boardContainer,
+					{ transform: [{ scale: boardScale }], opacity: boardOpacity },
+				]}
 			>
-				<View className="gap-3">
+				<View style={styles.board}>
 					{[0, 1, 2].map((r) => (
-						<View key={r} className="flex-row gap-3">
+						<View key={r} style={styles.row}>
 							{[0, 1, 2].map((c) => {
 								const i = r * 3 + c;
 								const val = board[i];
 								const clickable = !winner && val === null && isYourTurn;
+
+								const cellStyle = [
+									styles.cell,
+									val === "X" && styles.cellX,
+									val === "O" && styles.cellO,
+									styles.cellEmpty,
+								];
+
 								return (
 									<TouchableOpacity
 										key={i}
 										onPress={() => handleCellPress(i)}
 										disabled={!clickable}
-										className={`w-24 h-24 rounded-xl items-center justify-center border-4 transition-all duration-300 ease-in-out
-											${
-												val
-													? val === "X"
-														? "bg-neon-blue/20 border-neon-blue shadow-lg shadow-neon-blue/40"
-														: "bg-neon-pink/20 border-neon-pink shadow-lg shadow-neon-pink/40"
-													: "bg-color-surface/10 border-color-border/50 hover:bg-neon-blue/10"
-											}
-											${clickable ? "active:scale-95" : ""}
-										}`}
+										style={cellStyle}
+										activeOpacity={clickable ? 0.7 : 1}
 									>
 										<Text
-											className={`text-3xl font-extrabold
-												${val === "X" ? "text-neon-blue" : "text-neon-pink"}
-											}`}
+											style={[
+												styles.cellText,
+												val === "X" && styles.cellTextX,
+												val === "O" && styles.cellTextO,
+											]}
 										>
 											{val ?? ""}
 										</Text>
@@ -389,12 +360,12 @@ export default function GameScreen({
 			</Animated.View>
 
 			{countdown !== null && countdown > 0 && (
-				<Text className="text-white text-lg font-bold mt-3 animate-pulse">
+				<Text style={styles.countdown}>
 					{nextGameAt ? `Next game in` : `Time remaining`} {countdown}s
 				</Text>
 			)}
 
-			<Text className="text-white text-center text-2xl font-extrabold my-4 tracking-wide">
+			<Text style={styles.status}>
 				{winner === "draw"
 					? "It's a Draw!"
 					: winner
@@ -405,19 +376,185 @@ export default function GameScreen({
 			</Text>
 
 			{/* Buttons */}
-			<View className="w-full gap-4 mt-4">
+			<View style={styles.buttonContainer}>
 				<TouchableOpacity
 					onPress={onExit}
-					className="bg-neon-purple/80 rounded-full py-4 shadow-lg shadow-neon-purple/40 active:scale-95 transition-all duration-300"
+					style={styles.backButton}
+					activeOpacity={0.8}
 				>
-					<View className="flex-row items-center justify-center gap-2">
+					<View style={styles.buttonContent}>
 						<MaterialIcons name="arrow-back" size={24} color="#FFFFFF" />
-						<Text className="text-lg font-bold text-white uppercase tracking-wider">
-							Back to Lobby
-						</Text>
+						<Text style={styles.buttonText}>Back to Lobby</Text>
 					</View>
 				</TouchableOpacity>
 			</View>
 		</View>
 	);
 }
+
+const styles = StyleSheet.create({
+	loadingContainer: {
+		flex: 1,
+		justifyContent: "center",
+		alignItems: "center",
+		backgroundColor: "#1a1a2e",
+	},
+	loadingText: {
+		marginTop: 12,
+		color: "#FFFFFF",
+		fontSize: 16,
+	},
+	container: {
+		flex: 1,
+		alignItems: "center",
+		justifyContent: "center",
+		backgroundColor: "#1a1a2e",
+		padding: 16,
+		width: "100%",
+	},
+	header: {
+		marginBottom: 32,
+		width: "100%",
+	},
+	headerRow: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "flex-end",
+		width: "100%",
+		gap: 8,
+	},
+	headerLeft: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
+	iconContainer: {
+		width: 48,
+		height: 48,
+		borderRadius: 24,
+		backgroundColor: "rgba(0, 240, 255, 0.2)",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	title: {
+		fontSize: 28,
+		fontWeight: "800",
+		color: "#FFFFFF",
+		letterSpacing: 2,
+	},
+	userInfo: {
+		alignItems: "flex-end",
+	},
+	usernameLabel: {
+		color: "#FFFFFF",
+		fontSize: 14,
+	},
+	username: {
+		color: "#00F0FF",
+		fontSize: 16,
+		fontWeight: "600",
+	},
+	boardContainer: {
+		backgroundColor: "#2a2a3e",
+		borderRadius: 24,
+		padding: 16,
+		marginBottom: 32,
+		borderWidth: 4,
+		borderColor: "#00F0FF",
+		shadowColor: "#00F0FF",
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.3,
+		shadowRadius: 12,
+		elevation: 8,
+	},
+	board: {
+		gap: 12,
+	},
+	row: {
+		flexDirection: "row",
+		gap: 12,
+	},
+	cell: {
+		width: 96,
+		height: 96,
+		borderRadius: 12,
+		alignItems: "center",
+		justifyContent: "center",
+		borderWidth: 4,
+		backgroundColor: "#000",
+	},
+	cellX: {
+		backgroundColor: "rgba(0, 240, 255, 0.2)",
+		borderColor: "#00F0FF",
+		shadowColor: "#00F0FF",
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.4,
+		shadowRadius: 8,
+		elevation: 4,
+	},
+	cellO: {
+		backgroundColor: "rgba(255, 20, 147, 0.2)",
+		borderColor: "#FF1493",
+		shadowColor: "#FF1493",
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.4,
+		shadowRadius: 8,
+		elevation: 4,
+	},
+	cellEmpty: {
+		backgroundColor: "#2a2a3e",
+		borderColor: "rgba(255, 255, 255, 0.3)",
+	},
+	cellText: {
+		fontSize: 36,
+		fontWeight: "800",
+	},
+	cellTextX: {
+		color: "#00F0FF",
+	},
+	cellTextO: {
+		color: "#FF1493",
+	},
+	countdown: {
+		color: "#FFFFFF",
+		fontSize: 18,
+		fontWeight: "700",
+		marginTop: 12,
+	},
+	status: {
+		color: "#FFFFFF",
+		textAlign: "center",
+		fontSize: 24,
+		fontWeight: "800",
+		marginVertical: 16,
+		letterSpacing: 1,
+	},
+	buttonContainer: {
+		width: "100%",
+		gap: 16,
+		marginTop: 16,
+	},
+	backButton: {
+		backgroundColor: "rgba(138, 43, 226, 0.8)",
+		borderRadius: 25,
+		paddingVertical: 16,
+		shadowColor: "#8A2BE2",
+		shadowOffset: { width: 0, height: 4 },
+		shadowOpacity: 0.4,
+		shadowRadius: 8,
+		elevation: 6,
+	},
+	buttonContent: {
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 8,
+	},
+	buttonText: {
+		fontSize: 18,
+		fontWeight: "700",
+		color: "#FFFFFF",
+		textTransform: "uppercase",
+		letterSpacing: 1.5,
+	},
+});
