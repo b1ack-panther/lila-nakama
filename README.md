@@ -1,50 +1,107 @@
-# Lila Tic-Tac-Toe
+# XOXO - Fullstack Nakama Project
 
-This repository contains a minimal production-ready scaffold for a multiplayer Tic-Tac-Toe game using **Nakama** (with Go runtime plugins) as backend and **React Native** with NativeWind as frontend.
+**XOXO** is a cross-platform fullstack project integrating **Nakama** with **React Native** mobile app and **React Web** frontend. Deployed on a **Google Cloud VM**.
+
+---
 
 ## Features
-- Device-based authentication (JWT, 1 hour expiry)
-- Server-authoritative match logic implemented in Go runtime plugin
-- Real-time gameplay via Nakama WebSocket
-- Simple matchmaking (single mode)
-- Leaderboard (mock/demo RPC; replace with real leaderboard writes)
-- Dockerized backend + Postgres, Docker Compose for local dev
-- Sample Google Cloud deployment notes in `DEPLOYMENT.md`
 
-## Quickstart (local)
+- Real-time multiplayer with Nakama
+- React Native mobile app (iOS/Android)
+- React web app
+- User authentication & game state sync
+- Web hosted via `npx serve` on VM
+- Google Cloud firewall-configured ports
 
-1. Copy `.env.sample` to `.env` and edit if needed.
+---
 
-2. Start backend (Nakama + Postgres):
+## Tech Stack
+
+- **Backend:** Nakama server (Go)  
+- **Mobile App:** React Native (Expo)  
+- **Web App:** React (`npx serve`)  
+- **Database:** PostgreSQL (Nakama)  
+- **Deployment:** Google Cloud VM  
+
+---
+
+## Setup
+
+### Nakama Server
+
 ```bash
-docker-compose up --build
+docker run --name nakama -p 7350:7350 -p 7351:7351 heroiclabs/nakama
 ```
+Make sure ports 7350 and 7351 are open in Google Cloud firewall.
 
-Nakama admin console: http://localhost:7351
+### Web App
 
-3. Start frontend (React Native):
 ```bash
-cd frontend
+cd client
 npm install
-npx react-native start
-# then run on device/emulator:
-npx react-native run-android
+npm run web:build       # Build web
+npm run web:serve       # Serve on 0.0.0.0:3000
+```
+Open port 3000 in VM firewall to access externally:
+`http://<VM_PUBLIC_IP>:3000`
+
+### Mobile App
+
+```bash
+cd client
+npm install
+npm run android   # Android device/emulator
+npm run ios       # iOS device/simulator
+```
+Configure Nakama host in app (`extra.nakamaHost` or similar) with VM public IP
+
+---
+
+## Project Structure
+
+```
+.
+├── server/        # Nakama Go server & scripts
+├── client/               # React Native / Web app
+│   ├── App.js
+│   ├── package.json
+│   └── app.json          # Expo config
+└── README.md
 ```
 
-## Folder structure
-See the top-level directory tree — backend Go runtime and frontend React Native app.
+---
 
-## Environment (.env.sample)
-```
-POSTGRES_PASSWORD=examplepassword
-NAKAMA_SERVER_KEY=defaultkey
-NAKAMA_HOST=127.0.0.1
-NAKAMA_PORT=7350
-```
+## Environment
 
-## Deployment (GCP)
-See `DEPLOYMENT.md` for step-by-step instructions to deploy Nakama to Google Cloud Run with Cloud SQL.
+- Nakama host: VM public IP
+- Nakama ports: 7350 (HTTP), 7351 (gRPC)
+- App extra config from <mcfile name="app.json" path="c:\Users\Anonymous_\Desktop\lila-tictactoe\client\app.json"></mcfile> (`expo.extra.eas.projectId`)
 
-## Notes
-- This scaffold contains minimal error handling for brevity; expand for production use.
-- Leaderboard RPC returns mock data; swap with actual Nakama leaderboard writes (`nk.LeaderboardRecordWrite`) for production.
+---
+
+## Scripts
+
+- `npm run start` → Start Expo dev server
+- `npm run web` → Start web dev
+- `npm run web:build` → Build web app
+- `npm run web:serve` → Serve built web app on port 3000
+- `npm run android` / `npm run ios` → Run mobile app
+
+---
+
+## License
+
+MIT License
+
+---
+
+## Deployment
+
+Frontend Deployed Link: [http://34.131.145.246:3000](http://34.131.145.246:3000)
+Android App Link: [https://expo.dev/artifacts/eas/4ZKStZqK2dKQGTuLm3i9Yg.apk](https://expo.dev/artifacts/eas/4ZKStZqK2dKQGTuLm3i9Yg.apk)
+
+
+
+
+
+
